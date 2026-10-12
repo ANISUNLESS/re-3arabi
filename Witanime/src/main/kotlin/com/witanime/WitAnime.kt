@@ -50,8 +50,6 @@ class WitAnime : MainAPI() {
         @Volatile var isWebViewOpen = false
         @Volatile var lastWebViewOpenTime = 0L
     }
-
-    // ===================== Mega WebView Handler =====================
     object PlayerAccess {
         private val handler = android.os.Handler(android.os.Looper.getMainLooper())
         private var isMonitoring = false
@@ -387,8 +385,6 @@ class WitAnime : MainAPI() {
     init {
         PlayerAccess.startMonitoring()
     }
-
-    // ==================== Utilities ====================
     private val episodeUrlRegex = Regex("""/watch/([^/?#]+)/([^/?#]+)""")
     private val tokenRegex = Regex("^[a-f0-9]{64}$")
 
@@ -464,8 +460,6 @@ class WitAnime : MainAPI() {
         q in 1..719 -> 4
         else -> 5
     }
-
-    // ==================== Rate Limiting (429 Fix) ====================
     private val requestLock = Mutex()
     @Volatile private var lastRequestTime = 0L
     private val MIN_REQUEST_GAP = 300L // 300ms between requests to avoid 429
@@ -480,12 +474,8 @@ class WitAnime : MainAPI() {
             lastRequestTime = System.currentTimeMillis()
         }
     }
-
-    // ==================== Caching ====================
     private val linkCache = ConcurrentHashMap<String, Pair<Long, List<ExtractorLink>>>()
     private val sessionCache = ConcurrentHashMap<String, Pair<Long, String>>()
-
-    // ==================== Main Page ====================
     override val mainPage = mainPageOf(
         "home" to "الرئيسية",
         "$mainUrl/movies" to "الأفلام",
@@ -580,8 +570,6 @@ class WitAnime : MainAPI() {
             this.posterUrl = poster
         }
     }
-
-    // ==================== Search ====================
     override suspend fun search(query: String): List<SearchResponse> {
         respectRateLimit()
         val q = URLEncoder.encode(query, "UTF-8")
@@ -627,8 +615,6 @@ class WitAnime : MainAPI() {
             is JSONArray -> for (i in 0 until node.length()) collectSuggest(node.opt(i), out)
         }
     }
-
-    // ==================== Load ====================
     override suspend fun load(url: String): LoadResponse {
         respectRateLimit()
         var pageUrl = url
@@ -711,15 +697,12 @@ class WitAnime : MainAPI() {
             addEpisodes(DubStatus.Subbed, episodes)
         }
     }
-
-    // ==================== Sources ====================
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        // Check cache first
         linkCache[data]?.let { (t, list) ->
             if (System.currentTimeMillis() - t < 10 * 60_000L && list.isNotEmpty()) {
                 list.forEach { callback(it) }
@@ -733,15 +716,9 @@ class WitAnime : MainAPI() {
         try {
             val doc = app.get(data, interceptor = cfKiller).document
             val playerHtml = doc.html()
-
-            // Extract tokens from HTML
             val tokens = Regex("""[a-f0-9]{64}""").findAll(playerHtml).map { it.value }.distinct().toList()
-            
-            // Try to extract sources URL
             val sourcesUrl = Regex("""sourcesUrl['"]\s*:\s*["']([^"']+)""").find(playerHtml)?.groupValues?.get(1)
                 ?.replace("\\/", "/") ?: "$data/sources"
-
-            // Fetch sources
             for (token in tokens.take(5)) {
                 respectRateLimit()
                 try {
@@ -765,8 +742,6 @@ class WitAnime : MainAPI() {
                     }
                 } catch (e: Exception) {}
             }
-
-            // Extract video links from page
             for (match in Regex("""https?://[^\s"'<>]+(?:m3u8|mp4|mkv)(?:\?[^\s"'<>]*)?\"""").findAll(playerHtml)) {
                 val url = match.value.trim('"')
                 if (!url.contains("a-ads.com")) {
@@ -795,7 +770,6 @@ class WitAnime : MainAPI() {
     }
 
     private fun processSources(sources: JSONObject, referer: String, callback: (ExtractorLink) -> Unit) {
-        // Process players
         val players = sources.optJSONObject("players") ?: return
         val qualityMap = mapOf(
             "FHD" to 1080,
@@ -827,7 +801,6 @@ class WitAnime : MainAPI() {
         val url = server.optString("url") ?: server.optString("link") ?: server.optString("href")
 
         if (!token.isNullOrBlank() && token.length == 64) {
-            // Handle token-based sources
             callback(
                 newExtractorLink(
                     source = name,
@@ -838,7 +811,6 @@ class WitAnime : MainAPI() {
                 )
             )
         } else if (!url.isNullOrBlank() && url.startsWith("http")) {
-            // Handle direct URLs
             when {
                 url.contains("mega", ignoreCase = true) -> {
                     callback(
