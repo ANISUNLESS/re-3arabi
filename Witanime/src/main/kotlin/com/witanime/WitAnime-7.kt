@@ -47,6 +47,7 @@ class WitAnime : MainAPI() {
         @Volatile var isWebViewOpen = false
         @Volatile var lastWebViewOpenTime = 0L
     }
+
     object PlayerAccess {
         private val handler = android.os.Handler(android.os.Looper.getMainLooper())
         private var isMonitoring = false
@@ -281,6 +282,7 @@ class WitAnime : MainAPI() {
                 }
             }
         }
+
         private fun megaEmbed(u: String): String {
             val v = try { java.net.URLDecoder.decode(u, "UTF-8") } catch (e: Exception) { u }
             Regex("""(?i)mega\.(?:nz|io)/(?:file|embed)/([A-Za-z0-9_-]+)#([A-Za-z0-9_-]+)""").find(v)?.let {
@@ -403,6 +405,7 @@ class WitAnime : MainAPI() {
     init {
         PlayerAccess.startMonitoring()
     }
+
     private val DEBUG = false
 
     private val episodeUrlRegex = Regex("""/watch/([^/?#]+)/([^/?#]+)""")
@@ -470,6 +473,7 @@ class WitAnime : MainAPI() {
         q in 1..719 -> "SD"
         else -> "?"
     }
+
     private fun qualityRank(q: Int): Int = when {
         q >= 2160 -> 0
         q >= 1440 -> 1
@@ -553,6 +557,7 @@ class WitAnime : MainAPI() {
             .filter { a -> a.parents().none { it.tagName() == "aside" || it.tagName() == "nav" || it.tagName() == "footer" } }
             .mapNotNull { cardToResponse(it, withEpisode = false) }
             .distinctBy { it.url }
+
     override val mainPage = mainPageOf(
         "home" to "الرئيسية",
         "$mainUrl/movies" to "كل الأفلام",
@@ -575,6 +580,7 @@ class WitAnime : MainAPI() {
         var movies: List<SearchResponse>? = null
         var season: List<SearchResponse>? = null
         val others = ArrayList<HomePageList>()
+
         val hero = document.select("[data-hero-slide]").mapNotNull { sl ->
             val a = sl.selectFirst("h2 a") ?: return@mapNotNull null
             val href = a.attr("href")
@@ -623,6 +629,7 @@ class WitAnime : MainAPI() {
         result.addAll(others)
         return newHomePageResponse(result, false)
     }
+
     private fun collectSuggest(node: Any?, out: MutableList<SearchResponse>) {
         when (node) {
             is JSONObject -> {
@@ -669,6 +676,7 @@ class WitAnime : MainAPI() {
             emptyList()
         }
     }
+
     override suspend fun load(url: String): LoadResponse {
         var pageUrl = url
         var res = app.get(pageUrl, interceptor = cfKiller)
@@ -768,6 +776,7 @@ class WitAnime : MainAPI() {
             addEpisodes(DubStatus.Subbed, episodes)
         }
     }
+
     private val iframeHeaders = mapOf(
         "Sec-Fetch-Dest" to "iframe",
         "Sec-Fetch-Mode" to "navigate",
@@ -820,6 +829,7 @@ class WitAnime : MainAPI() {
             is JSONArray -> for (i in 0 until node.length()) collectEntries(node.opt(i), qualityKey, out)
         }
     }
+
     private class Session(
         val html: String,
         val document: org.jsoup.nodes.Document,
@@ -831,6 +841,7 @@ class WitAnime : MainAPI() {
                 try { java.net.URLDecoder.decode(it, "UTF-8") } catch (e: Exception) { it }
             }
     }
+
     private val siteLock = Mutex()
     @Volatile private var nextSlotAt = 0L
     @Volatile private var cooldownUntil = 0L
@@ -845,7 +856,9 @@ class WitAnime : MainAPI() {
             if (start > now) delay(start - now)
         }
     }
+
     @Volatile private var rateLimit = 0
+
     private fun observeRate(h: (String) -> String?) {
         val limit = h("X-RateLimit-Limit")?.trim()?.toIntOrNull()
         val remaining = h("X-RateLimit-Remaining")?.trim()?.toIntOrNull()
@@ -865,9 +878,18 @@ class WitAnime : MainAPI() {
         cooldownUntil = maxOf(cooldownUntil, System.currentTimeMillis() + maxOf(ms, 3000L))
     }
 
+    private suspend fun waitForCooldownIfNeeded() {
+        val remaining = cooldownUntil - System.currentTimeMillis()
+        if (remaining > 0L) {
+            delay(remaining)
+            cooldownUntil = 0L
+        }
+    }
+
     private fun isThrottled(code: Int, text: String): Boolean =
         code == 429 || (text.length < 8000 &&
             (text.contains("Too Many Requests", ignoreCase = true) || text.contains("طلبات كثيرة")))
+
     private val linkCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, List<ExtractorLink>>>()
     private val sessionCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, Session>>()
 
@@ -879,6 +901,7 @@ class WitAnime : MainAPI() {
         if (!force) {
             sessionCache[url]?.let { (t, sess) -> if (now - t < 90_000L) return sess }
         }
+        waitForCooldownIfNeeded()
         for (i in 0..2) {
             siteWait()
             val page = app.get(url, interceptor = cfKiller)
@@ -903,6 +926,7 @@ class WitAnime : MainAPI() {
         }
         throw ErrorLoadingException("429")
     }
+
     @Volatile private var cachedEndpoints: Pair<Long, List<String>>? = null
     @Volatile private var jsSnips: List<String> = emptyList()
 
@@ -924,7 +948,8 @@ class WitAnime : MainAPI() {
                 while (n < 2) {
                     val i = js.indexOf(key, from)
                     if (i < 0) break
-                    snips.add("$key@${src.substringAfterLast('/')}: " +
+                    snips.add("$key@${src.substringAfterLast('/')}:
+                        " +
                         js.substring(maxOf(0, i - 120), minOf(js.length, i + 520)).replace(Regex("\\s+"), " "))
                     from = i + key.length
                     n++
@@ -946,6 +971,7 @@ class WitAnime : MainAPI() {
     }
 
     private data class SourcesResult(val session: Session, val code: Int, val text: String, val url: String = "", val log: List<String> = emptyList())
+
     private data class WvResult(
         val ok: Boolean,
         val json: String,
@@ -1034,8 +1060,10 @@ class WitAnime : MainAPI() {
             }
         }
     }
+
     @Volatile private var gateWv: WebView? = null
     private val gateLock = Mutex()
+
     private suspend fun webTarget(
         srcPath: String, gatePath: String, csrf: String, asIframe: Boolean,
         seen: MutableList<String>, timeoutMs: Long,
@@ -1110,8 +1138,8 @@ class WitAnime : MainAPI() {
                     "location.href='$gatePath';"
                 }
                 val html = """<html><body><script>
-function go(){$go}
-fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'application/json','X-CSRF-TOKEN':'$csrf'}}).then(go,go);
+function go(){${go}}
+fetch('${srcPath}',{method:'POST',credentials:'include',headers:{'Accept':'application/json','X-CSRF-TOKEN':'${csrf}'}}).then(go,go);
 </script></body></html>"""
                 w.loadDataWithBaseURL("$mainUrl/watch/", html, "text/html", "utf-8", null)
                 try {
@@ -1136,10 +1164,10 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
             siteWait()
             val throttled = java.util.concurrent.atomic.AtomicBoolean(false)
             val retryMs = java.util.concurrent.atomic.AtomicLong(0L)
-            target = webTarget(srcPath, gatePath, csrf, true, seen, 10_000L, throttled, retryMs)
+            target = webTarget(srcPath, gatePath, csrf, true, seen, 8_000L, throttled, retryMs)
             if (target == null && !throttled.get()) {
                 seen.add("--main-frame--")
-                target = webTarget(srcPath, gatePath, csrf, false, seen, 10_000L, throttled, retryMs)
+                target = webTarget(srcPath, gatePath, csrf, false, seen, 8_000L, throttled, retryMs)
             }
             if (target == null && throttled.get()) {
                 seen.add("429 → انتظار")
@@ -1163,7 +1191,8 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
         val flexible = Regex("""(?i)\bsourcesUrl\s*[:=]\s*["']([^"']+)["']""").find(first.html)?.groupValues?.get(1)?.replace("\\/", "/")
         val guessed = java.net.URI(data).path.trimEnd('/') + "/sources"
         val candidates = listOfNotNull(strict, flexible, guessed).map { toUrl(it) }.distinct()
-        val plan = ArrayList<Pair<String, Pair<String, String>>>()   // (variant, (name, url))
+
+        val plan = ArrayList<Pair<String, Pair<String, String>>>()
         for (v in listOf("B")) plan.add(v to ("$v#0" to candidates[0]))
         for ((i, c) in candidates.withIndex()) if (i > 0) plan.add("B" to ("B#$i" to c))
 
@@ -1223,6 +1252,7 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
         sessionCache.remove(data)
         return SourcesResult(session, code, text, candidates[0], log)
     }
+
     private suspend fun extractMedia(
         body: String,
         referer: String,
@@ -1290,8 +1320,10 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
     }
 
     @Volatile private var gofileNote = ""
+
     private val FAIL_REPORT = true
     private val SHOW_NOTICES = true
+
     private fun serverRank(n: String): Int {
         val l = n.lowercase()
         return when {
@@ -1463,6 +1495,13 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
         return true
     }
 
+    private fun looksLikeMediaUrl(s: String?): Boolean {
+        if (s.isNullOrBlank()) return false
+        val u = s.lowercase()
+        if (u.contains(".css") || u.contains("/css/") || u.contains("blank") || u.contains("pixel") || u.contains("ads")) return false
+        return u.startsWith("http://") || u.startsWith("https://")
+    }
+
     private suspend fun resolveOkRu(
         link: String, name: String, quality: Int, callback: (ExtractorLink) -> Unit
     ): Boolean {
@@ -1473,12 +1512,25 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
         ).text
         val t = raw.replace("&quot;", "\"").replace("\\\"", "\"")
             .replace("\\/", "/").replace("\\u0026", "&").replace("&amp;", "&")
-        val qmap = mapOf("mobile" to 144, "lowest" to 240, "low" to 360, "sd" to 480, "hd" to 720, "full" to 1080, "quad" to 1440, "ultra" to 2160)
+        val qmap = mapOf(
+            "mobile" to 144,
+            "lowest" to 240,
+            "low" to 360,
+            "sd" to 480,
+            "hd" to 720,
+            "full" to 1080,
+            "quad" to 1440,
+            "ultra" to 2160
+        )
+
         var any = false
+
         for (m in Regex("""name":"([a-z]+)","url":"(https?://[^"]+)""").findAll(t)) {
             val q = qmap[m.groupValues[1]] ?: continue
+            val u = m.groupValues[2]
+            if (!looksLikeMediaUrl(u)) continue
             callback(
-                newExtractorLink(source = name, name = name, url = m.groupValues[2]) {
+                newExtractorLink(source = name, name = name, url = u) {
                     this.referer = "https://ok.ru/"
                     this.quality = q
                     this.type = ExtractorLinkType.VIDEO
@@ -1486,14 +1538,36 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
             )
             any = true
         }
+
         if (!any) {
-            Regex("""(?:hlsManifestUrl|ondemandHls)":"(https?://[^"]+)""").find(t)?.let { hm ->
-                for (v in M3u8Helper.generateM3u8(name, hm.groupValues[1], "https://ok.ru/")) {
-                    callback(v)
-                    any = true
+            val hlsRx = Regex("""(?:hlsManifestUrl|ondemandHls)":"(https?://[^"]+)""")
+            hlsRx.find(t)?.let { hm ->
+                val u = hm.groupValues[1]
+                if (looksLikeMediaUrl(u)) {
+                    for (v in M3u8Helper.generateM3u8(name, u, "https://ok.ru/")) {
+                        callback(v)
+                        any = true
+                    }
                 }
             }
         }
+
+        if (!any) {
+            val alt = Regex("""(?:videoUrl|hdUrl|mobileUrl|mp4Url|url)":"(https?://[^"]+)""")
+            alt.findAll(t).map { it.groupValues[1] }
+                .filter { looksLikeMediaUrl(it) }
+                .forEach { url ->
+                    callback(
+                        newExtractorLink(source = name, name = name, url = url) {
+                            this.referer = "https://ok.ru/"
+                            this.quality = quality
+                            this.type = ExtractorLinkType.VIDEO
+                        }
+                    )
+                    any = true
+                }
+        }
+
         return any
     }
 
@@ -1539,6 +1613,7 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
         }
         return any
     }
+
     private suspend fun renamedLink(l: ExtractorLink, nm: String): ExtractorLink = try {
         newExtractorLink(source = l.source, name = nm, url = l.url, type = l.type) {
             this.referer = l.referer
@@ -1574,6 +1649,7 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
             )
             return true
         }
+
         val specific = try {
             when {
                 host.contains("mediafire.com") -> resolveMediaFire(link, zipName(name), quality, callback)
@@ -1710,6 +1786,7 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
         }
         return handled
     }
+
     private suspend fun looksLikeZip(url: String, headers: Map<String, String>, referer: String?): Boolean =
         withContext(Dispatchers.IO) {
             try {
@@ -1767,11 +1844,15 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
                 return true
             }
         }
+
+        waitForCooldownIfNeeded()
+
         val remainMs = cooldownUntil - System.currentTimeMillis()
         if (remainMs > 25_000L) {
             notice("⚠️ الموقع يحدّ الطلبات الآن. حاول بعد ${remainMs / 1000} ثانية", 0, callback)
             return false
         }
+
         throttleHits = 0
         val firstSession = try {
             openSession(data)
@@ -1781,6 +1862,7 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
             notice(hintFor(c) ?: "⚠️ تعذّر فتح الصفحة", 0, callback)
             return false
         }
+
         sessionUA = null
         var sr = fetchSources(data, firstSession)
         if (sr.code !in 200..299) {
@@ -1793,6 +1875,7 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
                 sr = sr.copy(log = sr.log + "W=${wv?.flag ?: "no-activity"}")
             }
         }
+
         val viaWv = sr.url == "webview"
         val session = sr.session
         val html = session.html
@@ -1823,6 +1906,7 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
         } catch (e: Exception) {
             logError(e)
         }
+
         val endpoints = try { discoverEndpoints(doc) } catch (e: Exception) { emptyList() }
         fun pickDl(vararg keys: String): String? = endpoints.firstOrNull { e ->
             val l = e.lowercase()
@@ -1845,7 +1929,8 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
             val shown = label.takeIf { labelHit } ?: hostOf(link)?.removePrefix("www.") ?: "Download"
             pageLinks.putIfAbsent(link, q to shown)
         }
-        val dlHostRx = Regex("""https?://(?:www\.)?(?:gofile\.io|mediafire\.com|workupload\.com|4shared\.com|pixeldrain\.com|krakenfiles\.com|send\.cm|terabox\.com)/[^\s"'<>\)]+""")
+
+        val dlHostRx = Regex("""https?://(?:www\.)?(?:gofile\.io|mediafire\.com|workupload\.com|4shared\.com|pixeldrain\.com|krakenfiles\.com|send\.cm|terabox\.com)/[^\s"'<>)]+""")
         for (src in listOf(unescape(html), unescape(sourcesText))) {
             for (m in dlHostRx.findAll(src)) {
                 val link = m.value.trimEnd(',', ';', '.')
@@ -1861,11 +1946,12 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
         Regex("""[a-f0-9]{64}""").findAll(html).map { it.value }.distinct()
             .filter { it !in knownTokens }.take(10)
             .forEach { entries.add(SrcEntry("", it, null, null, null)) }
+
         val sortedEntries = entries.withIndex()
             .sortedWith(
                 compareBy(
-                    { if (qualityRank(qualityValue(it.value.quality)) <= 3) 0 else 1 },   // FHD/HD قبل SD
-                    { it.value.download },                                                // المشاهدة قبل التحميل
+                    { if (qualityRank(qualityValue(it.value.quality)) <= 3) 0 else 1 },
+                    { it.value.download },
                     { qualityRank(qualityValue(it.value.quality)) },
                     { it.index }
                 )
@@ -1951,13 +2037,6 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
                                             ssr = postSrc()
                                         }
                                         if (ssr.cookies.isNotEmpty()) cookies.putAll(ssr.cookies)
-                                        if (label.lowercase() in setOf("gofile", "mediafire", "workupload")) {
-                                            synchronized(debug) {
-                                                if (debug.count { it.startsWith("src:") } < 2) {
-                                                    debug.add("src:$label ${ssr.code} " + ssr.text.replace(Regex("\\s+"), " ").take(220))
-                                                }
-                                            }
-                                        }
                                     } catch (e: Exception) {
                                         logError(e)
                                     }
@@ -2009,8 +2088,6 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
             jobs.awaitAll()
         }
 
-
-
         withContext(Dispatchers.Main) {
             try {
                 gateWv?.stopLoading()
@@ -2019,6 +2096,7 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
             }
             gateWv = null
         }
+
         val sortedLinks = buffer.toList().sortedWith(
             compareBy<ExtractorLink>(
                 { if (it.name.startsWith("تحميل")) 1 else 0 },
@@ -2028,6 +2106,7 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
             )
         )
         sortedLinks.forEach { callback(it) }
+
         if (sortedLinks.isNotEmpty() && throttleHits == 0) {
             linkCache[data] = System.currentTimeMillis() to sortedLinks
         }
