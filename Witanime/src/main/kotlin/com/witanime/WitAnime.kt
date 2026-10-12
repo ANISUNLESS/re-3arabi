@@ -50,8 +50,6 @@ class WitAnime(private val pluginContext: Context? = null) : MainAPI() {
         @Volatile var isWebViewOpen = false
         @Volatile var lastWebViewOpenTime = 0L
     }
-
-    // ======================= Mega WebView interceptor =======================
     object PlayerAccess {
         private val handler = android.os.Handler(android.os.Looper.getMainLooper())
         private var isMonitoring = false
@@ -441,8 +439,6 @@ class WitAnime(private val pluginContext: Context? = null) : MainAPI() {
         pluginContext?.let { PlayerAccess.registerActivityTracking(it) }
         PlayerAccess.startMonitoring()
     }
-
-    // ============================= Helpers =============================
     private val DEBUG = false
 
     private val episodeUrlRegex = Regex("""/watch/([^/?#]+)/([^/?#]+)""")
@@ -1852,7 +1848,6 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
 
     @Suppress("UNUSED_PARAMETER")
     private suspend fun notice(text: String, idx: Int, callback: (ExtractorLink) -> Unit) {
-        // Diagnostics must never be exposed as fake playable links in Cloudstream.
         if (SHOW_NOTICES || DEBUG) {
             val safe = text
                 .replace(Regex("""https?://[^\s]+"""), "[URL]")
@@ -1991,8 +1986,6 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
             players?.let { collectEntries(it, "", entries) }
             sources?.let { collectEntries(it, "", entries) }
             downloads?.let { collectEntries(it, "", dlList) }
-
-            // Some site revisions return a flattened payload rather than named sections.
             if (entries.isEmpty() && dlList.isEmpty()) collectEntries(root, "", entries)
             dlList.forEach { entries.add(it.copy(download = true)) }
         } catch (e: Exception) {
@@ -2041,9 +2034,6 @@ fetch('$srcPath',{method:'POST',credentials:'include',headers:{'Accept':'applica
                 pageLinks.putIfAbsent(link, q to shown)
             }
         }
-
-        // Only use tokens found in the site's structured source payload. Arbitrary 64-character
-        // hashes in HTML can be CSRF values or asset hashes and should not trigger gate requests.
 
         val eligibleEntries = if (sourcesCode == 429) entries.filter { it.direct != null } else entries
         val uniqueEntries = eligibleEntries.distinctBy { "${it.download}|${it.token.orEmpty()}|${it.direct.orEmpty()}" }
