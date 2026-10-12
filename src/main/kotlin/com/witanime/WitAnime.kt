@@ -51,8 +51,6 @@ class WitAnime : MainAPI() {
     private val sessionCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, Session>>()
     private val linkCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, List<ExtractorLink>>>()
     private val failedServers = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
-
-    // ==================== ADVANCED RATE LIMITER ====================
     private class AdvancedRateLimiter {
         private val lock = Mutex()
         @Volatile private var nextRequestTime = 0L
@@ -126,8 +124,6 @@ class WitAnime : MainAPI() {
         val code: Int,
         val body: String
     )
-
-    // ==================== QUALITY PARSING ====================
     private fun parseQuality(label: String?): Int {
         val norm = label?.trim()?.uppercase().orEmpty()
         return when {
@@ -159,8 +155,6 @@ class WitAnime : MainAPI() {
             else -> null
         }
     }
-
-    // ==================== URL UTILITIES ====================
     private fun normalizeUrl(raw: String): String? {
         val v = raw.trim().trim('"', '\'')
         if (v.isBlank() || v.startsWith("#") || v.startsWith("javascript:", true) || v.startsWith("data:", true)) return null
@@ -364,8 +358,6 @@ class WitAnime : MainAPI() {
             addEpisodes(DubStatus.Subbed, episodes)
         }
     }
-
-    // ==================== SESSION & SOURCES ====================
     private suspend fun openSession(url: String, forceRefresh: Boolean = false): Session {
         val now = System.currentTimeMillis()
         if (!forceRefresh) {
@@ -480,8 +472,6 @@ class WitAnime : MainAPI() {
             is JSONArray -> for (i in 0 until node.length()) collectEntries(node.opt(i), qualityKey, out)
         }
     }
-
-    // ==================== RESOLVERS ====================
     private suspend fun resolveMedia(html: String, referer: String, name: String, quality: Int, callback: (ExtractorLink) -> Unit): Boolean {
         val regex = Regex("""https?://[^\s"'<>]+?\.(?:m3u8|mp4|mkv|webm)(?:\?[^\s"'<>]*)?""")
         val seen = HashSet<String>()
@@ -643,8 +633,6 @@ class WitAnime : MainAPI() {
 
         return false
     }
-
-    // ==================== MAIN LOADER ====================
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
