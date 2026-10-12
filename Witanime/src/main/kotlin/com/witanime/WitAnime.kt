@@ -45,8 +45,6 @@ class WitAnime : MainAPI() {
         @Volatile var isWebViewOpen = false
         @Volatile var lastWebViewOpenTime = 0L
     }
-
-    // ======================= Advanced Player WebView Interceptor =======================
     object PlayerAccess {
         private val handler = android.os.Handler(android.os.Looper.getMainLooper())
         private var isMonitoring = false
@@ -403,8 +401,6 @@ class WitAnime : MainAPI() {
     init {
         PlayerAccess.startMonitoring()
     }
-
-    // ============================= Core Helpers =============================
     private val DEBUG = false
     private val episodeUrlRegex = Regex("""/watch/([^/?#]+)/([^/?#]+)""")
     private val tokenRegex = Regex("^[a-f0-9]{64}$")
@@ -775,8 +771,6 @@ class WitAnime : MainAPI() {
             addEpisodes(DubStatus.Subbed, episodes)
         }
     }
-
-    // ============================= Rate Limiting & Throttling Management =============================
     private val siteLock = Mutex()
     @Volatile private var nextSlotAt = 0L
     @Volatile private var cooldownUntil = 0L
@@ -827,8 +821,6 @@ class WitAnime : MainAPI() {
     private fun isThrottled(code: Int, text: String): Boolean =
         code == 429 || (text.length < 8000 &&
             (text.contains("Too Many Requests", ignoreCase = true) || text.contains("طلبات كثيرة")))
-
-    // ============================= Advanced Link Extraction =============================
     private val linkCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, List<ExtractorLink>>>()
     private val sessionCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, Session>>()
 
